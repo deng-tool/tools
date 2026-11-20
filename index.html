@@ -1,0 +1,2568 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#070b11">
+<title>攒钱目标</title>
+
+<script>
+/* ============================================================
+   ✏️ 改这里：核心目标数据
+   ------------------------------------------------------------
+   - 目标金额、目标日期、目标名称都在这里改
+   - 目标日期格式必须是 YYYY-MM-DD
+   - initialSaved 只在第一次打开时生效；之后点页面右上角「调整」修改
+   - planStartDate 可选：留空表示第一次打开本页面的日期
+   ============================================================ */
+window.SAVINGS_CONFIG = {
+  goal: {
+    name: '攒钱目标',
+    amount: 2000,
+    date: '2027-08-01',
+    initialSaved: 0
+  },
+
+  // 可选：计划从哪天开始算时间进度；留空 = 第一次打开本页的日期
+  planStartDate: '',
+
+  /* 🎨 改这里：状态颜色（十六进制） */
+  theme: {
+    green: '#37e0a2',
+    yellow: '#ffc857',
+    red: '#ff637d',
+    blue: '#74a7ff'
+  }
+};
+</script>
+
+<style>
+  /* ============================================================
+     基础主题
+     🎨 想换底色、字体等，改这里；状态色优先改页面顶部 THEME
+     ============================================================ */
+  :root {
+    --bg: #070b11;
+    --card-top: rgba(21, 30, 43, .92);
+    --card-bottom: rgba(12, 18, 27, .94);
+    --text: #f4f8fc;
+    --muted: #8b98aa;
+    --faint: #5d697b;
+    --line: rgba(255, 255, 255, .075);
+    --line-strong: rgba(255, 255, 255, .14);
+
+    --green: #37e0a2;
+    --green-rgb: 55, 224, 162;
+    --yellow: #ffc857;
+    --yellow-rgb: 255, 200, 87;
+    --red: #ff637d;
+    --red-rgb: 255, 99, 125;
+    --blue: #74a7ff;
+    --blue-rgb: 116, 167, 255;
+
+    --radius: 22px;
+    --font: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Helvetica Neue", Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+
+  html {
+    color-scheme: dark;
+    background: var(--bg);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    min-height: 100svh;
+    font-family: var(--font);
+    color: var(--text);
+    line-height: 1.5;
+    background:
+      radial-gradient(1150px 700px at 50% -18%, rgba(var(--green-rgb), .10), transparent 62%),
+      radial-gradient(850px 540px at 112% 8%, rgba(var(--blue-rgb), .10), transparent 58%),
+      var(--bg);
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: linear-gradient(180deg, transparent 55%, rgba(0, 0, 0, .20));
+  }
+
+  button, input { font-family: inherit; }
+  button { -webkit-tap-highlight-color: transparent; }
+
+  :focus-visible {
+    outline: 2px solid var(--green);
+    outline-offset: 3px;
+  }
+
+  ::selection {
+    background: rgba(var(--green-rgb), .28);
+    color: #fff;
+  }
+
+  .app {
+    width: 100%;
+    max-width: 620px;
+    margin: 0 auto;
+    padding: calc(18px + env(safe-area-inset-top)) 16px calc(34px + env(safe-area-inset-bottom));
+  }
+
+  /* ---------- 顶部 ---------- */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: .95rem;
+    font-weight: 700;
+    letter-spacing: -.01em;
+  }
+
+  .brand-mark {
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border-radius: 11px;
+    border: 1px solid rgba(var(--green-rgb), .24);
+    background: linear-gradient(135deg, rgba(var(--green-rgb), .17), rgba(var(--blue-rgb), .12));
+    color: var(--green);
+    font-size: 1rem;
+    font-weight: 800;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08);
+  }
+
+  .adjust-btn {
+    min-height: 44px;
+    padding: 0 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border: 1px solid var(--line-strong);
+    border-radius: 13px;
+    background: rgba(255, 255, 255, .035);
+    color: #c8d2df;
+    font-size: .78rem;
+    font-weight: 650;
+    cursor: pointer;
+    transition: background .2s ease, border-color .2s ease, color .2s ease;
+  }
+
+  .adjust-btn:hover {
+    background: rgba(255, 255, 255, .07);
+    border-color: rgba(255, 255, 255, .22);
+    color: #fff;
+  }
+
+  .adjust-btn svg { flex: 0 0 auto; }
+
+  .privacy {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    margin: 10px 2px 16px;
+    color: var(--faint);
+    font-size: .67rem;
+    line-height: 1.55;
+  }
+
+  .privacy::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    margin-top: 5px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: var(--yellow);
+    box-shadow: 0 0 9px rgba(var(--yellow-rgb), .5);
+  }
+
+  .config-error {
+    margin: 0 0 16px;
+    padding: 14px 16px;
+    border: 1px solid rgba(var(--red-rgb), .35);
+    border-radius: 14px;
+    background: rgba(var(--red-rgb), .10);
+    color: #ffb6c1;
+    font-size: .82rem;
+    line-height: 1.6;
+  }
+
+  main {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .card {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: linear-gradient(180deg, var(--card-top), var(--card-bottom));
+    box-shadow:
+      0 18px 50px rgba(0, 0, 0, .26),
+      inset 0 1px 0 rgba(255, 255, 255, .04);
+    animation: rise .42s ease both;
+  }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(9px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ---------- 主视觉 ---------- */
+  .hero {
+    position: relative;
+    overflow: hidden;
+    padding: 22px;
+    background:
+      radial-gradient(120% 95% at 100% 0%, rgba(var(--green-rgb), .09), transparent 55%),
+      linear-gradient(180deg, rgba(21, 31, 44, .96), rgba(11, 17, 26, .96));
+  }
+
+  .hero::after {
+    content: "";
+    position: absolute;
+    top: -90px;
+    right: -75px;
+    width: 210px;
+    height: 210px;
+    border-radius: 50%;
+    background: rgba(var(--green-rgb), .13);
+    filter: blur(44px);
+    pointer-events: none;
+  }
+
+  .hero > * { position: relative; z-index: 1; }
+
+  .hero-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+  }
+
+  .eyebrow {
+    margin: 0 0 2px;
+    color: var(--muted);
+    font-size: .68rem;
+    letter-spacing: .12em;
+  }
+
+  .goal-name {
+    margin: 0;
+    font-size: clamp(1.28rem, 5.5vw, 1.65rem);
+    line-height: 1.25;
+    letter-spacing: -.035em;
+    overflow-wrap: anywhere;
+  }
+
+  .target-chip {
+    flex: 0 0 auto;
+    padding: 7px 10px;
+    border: 1px solid rgba(var(--blue-rgb), .22);
+    border-radius: 999px;
+    background: rgba(var(--blue-rgb), .08);
+    color: #c0d6ff;
+    font-size: .7rem;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .countdown { margin-top: 25px; }
+
+  .countdown-label {
+    color: var(--muted);
+    font-size: .78rem;
+    letter-spacing: .04em;
+  }
+
+  .countdown-value {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-height: 1.05em;
+    margin-top: 2px;
+  }
+
+  .days-value {
+    display: block;
+    color: #fbfffd;
+    font-size: clamp(4.5rem, 21vw, 6.4rem);
+    font-weight: 850;
+    line-height: .92;
+    letter-spacing: -.06em;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 42px rgba(var(--green-rgb), .14);
+    transition: color .25s ease, font-size .25s ease;
+  }
+
+  .days-value.is-achieved { color: var(--green); }
+  .days-value.is-overdue { color: var(--red); }
+
+  .countdown-value.is-word .days-value {
+    font-size: clamp(2.75rem, 14vw, 4.15rem);
+    letter-spacing: -.035em;
+  }
+
+  .unit {
+    color: var(--muted);
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: 0;
+  }
+
+  .countdown-sub {
+    margin: 8px 0 0;
+    color: var(--faint);
+    font-size: .69rem;
+  }
+
+  .daily {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 20px;
+    padding-top: 17px;
+    border-top: 1px solid var(--line);
+  }
+
+  .daily-label {
+    padding-bottom: 7px;
+    color: var(--muted);
+    font-size: .8rem;
+    white-space: nowrap;
+  }
+
+  .daily-value {
+    color: var(--green);
+    font-size: clamp(2.15rem, 10.5vw, 3.35rem);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -.045em;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    text-shadow: 0 0 30px rgba(var(--green-rgb), .17);
+  }
+
+  .daily-value.is-muted {
+    color: var(--faint);
+    text-shadow: none;
+  }
+
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-top: 17px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, .025);
+  }
+
+  .metric {
+    min-width: 0;
+    padding: 12px 7px;
+    text-align: center;
+  }
+
+  .metric + .metric { border-left: 1px solid var(--line); }
+
+  .metric-label {
+    display: block;
+    margin-bottom: 3px;
+    overflow: hidden;
+    color: var(--muted);
+    font-size: .67rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .metric-value {
+    display: block;
+    overflow: hidden;
+    color: #eaf1f9;
+    font-size: clamp(.9rem, 3.9vw, 1.12rem);
+    font-weight: 700;
+    letter-spacing: -.02em;
+    font-variant-numeric: tabular-nums;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* ---------- 进度 ---------- */
+  .progress-card { padding: 20px; }
+
+  .card-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .card-heading h2 {
+    margin: 0;
+    font-size: 1rem;
+    letter-spacing: -.015em;
+  }
+
+  .percent {
+    color: var(--green);
+    font-size: 1.43rem;
+    font-weight: 800;
+    letter-spacing: -.04em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .progress-track {
+    position: relative;
+    height: 32px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, .055);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .065);
+  }
+
+  .progress-fill {
+    width: 0%;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #168f66, var(--green));
+    box-shadow: 0 0 28px rgba(var(--green-rgb), .32);
+    transition: width .65s cubic-bezier(.22, 1, .36, 1);
+  }
+
+  .progress-amount {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    color: #f4fff9;
+    font-size: .77rem;
+    font-weight: 700;
+    letter-spacing: -.01em;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, .7);
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  .progress-line {
+    margin: 10px 2px 0;
+    color: #b4c0cf;
+    font-size: .86rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---------- 时间进度对比 ---------- */
+  .compare {
+    margin-top: 17px;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, .024);
+    transition: border-color .25s ease, background .25s ease;
+  }
+
+  .compare.is-behind {
+    border-color: rgba(var(--red-rgb), .40);
+    background: rgba(var(--red-rgb), .075);
+  }
+
+  .compare.is-ahead {
+    border-color: rgba(var(--green-rgb), .20);
+    background: rgba(var(--green-rgb), .045);
+  }
+
+  .compare-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .compare-title {
+    color: var(--muted);
+    font-size: .79rem;
+    font-weight: 650;
+  }
+
+  .badge {
+    flex: 0 0 auto;
+    padding: 4px 9px;
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .04);
+    color: var(--muted);
+    font-size: .67rem;
+    font-weight: 700;
+  }
+
+  .is-behind .badge {
+    border-color: rgba(var(--red-rgb), .35);
+    background: rgba(var(--red-rgb), .13);
+    color: var(--red);
+  }
+
+  .is-ahead .badge {
+    border-color: rgba(var(--green-rgb), .30);
+    background: rgba(var(--green-rgb), .10);
+    color: var(--green);
+  }
+
+  .is-sync .badge {
+    border-color: rgba(var(--blue-rgb), .28);
+    background: rgba(var(--blue-rgb), .09);
+    color: #b9d2ff;
+  }
+
+  .dual-track {
+    position: relative;
+    height: 16px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .07);
+  }
+
+  .time-fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 0%;
+    background: linear-gradient(90deg, rgba(var(--blue-rgb), .35), rgba(var(--blue-rgb), .82));
+    transition: width .65s cubic-bezier(.22, 1, .36, 1);
+  }
+
+  .money-fill {
+    position: absolute;
+    left: 0;
+    bottom: 3px;
+    z-index: 2;
+    width: 0%;
+    height: 10px;
+    border-radius: 999px;
+    background: var(--green);
+    transition: width .65s cubic-bezier(.22, 1, .36, 1), background .25s ease;
+  }
+
+  .is-behind .money-fill { background: var(--red); }
+
+  .time-marker {
+    position: absolute;
+    top: -2px;
+    bottom: -2px;
+    left: 0%;
+    z-index: 3;
+    width: 2px;
+    border-radius: 2px;
+    background: #fff;
+    opacity: 0;
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, .22);
+    transform: translateX(-50%);
+    transition: left .65s cubic-bezier(.22, 1, .36, 1), opacity .25s ease;
+  }
+
+  .compare-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px 16px;
+    margin-top: 10px;
+    color: var(--muted);
+    font-size: .71rem;
+  }
+
+  .compare-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .compare-legend b {
+    color: #eaf1f9;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+  }
+
+  .dot.time { background: var(--blue); }
+  .dot.money { background: var(--green); }
+  .is-behind .dot.money { background: var(--red); }
+
+  .compare-note {
+    margin: 8px 0 0;
+    color: var(--muted);
+    font-size: .76rem;
+    line-height: 1.55;
+  }
+
+  .is-behind .compare-note { color: #ffb3bf; }
+
+  .plan-start {
+    margin: 4px 0 0;
+    color: var(--faint);
+    font-size: .66rem;
+  }
+
+  /* ---------- 状态 ---------- */
+  .status-card { padding: 20px; }
+
+  .status-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .status-orb {
+    width: 12px;
+    height: 12px;
+    margin-top: 7px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow:
+      0 0 0 5px rgba(var(--green-rgb), .10),
+      0 0 20px rgba(var(--green-rgb), .38);
+  }
+
+  .tone-yellow .status-orb {
+    background: var(--yellow);
+    box-shadow:
+      0 0 0 5px rgba(var(--yellow-rgb), .10),
+      0 0 20px rgba(var(--yellow-rgb), .38);
+  }
+
+  .tone-red .status-orb {
+    background: var(--red);
+    box-shadow:
+      0 0 0 5px rgba(var(--red-rgb), .10),
+      0 0 20px rgba(var(--red-rgb), .38);
+  }
+
+  .tone-muted .status-orb {
+    background: var(--faint);
+    box-shadow: 0 0 0 5px rgba(255, 255, 255, .05);
+  }
+
+  .section-label {
+    margin: 0 0 1px;
+    color: var(--muted);
+    font-size: .67rem;
+    letter-spacing: .08em;
+  }
+
+  .status-title {
+    margin: 0;
+    font-size: 1.28rem;
+    letter-spacing: -.025em;
+  }
+
+  .tone-green .status-title { color: var(--green); }
+  .tone-yellow .status-title { color: var(--yellow); }
+  .tone-red .status-title { color: var(--red); }
+  .tone-muted .status-title { color: var(--muted); }
+
+  .status-desc {
+    margin: 8px 0 0 24px;
+    color: var(--muted);
+    font-size: .85rem;
+    line-height: 1.65;
+  }
+
+  .status-scale {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 17px;
+  }
+
+  .scale-step {
+    position: relative;
+    padding-top: 9px;
+    color: var(--faint);
+    font-size: .65rem;
+    text-align: center;
+    transition: color .25s ease;
+  }
+
+  .scale-step::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .075);
+    transition: background .25s ease, box-shadow .25s ease;
+  }
+
+  .scale-step.active { font-weight: 700; }
+
+  .scale-step.active.green { color: var(--green); }
+  .scale-step.active.green::before {
+    background: var(--green);
+    box-shadow: 0 0 15px rgba(var(--green-rgb), .48);
+  }
+
+  .scale-step.active.yellow { color: var(--yellow); }
+  .scale-step.active.yellow::before {
+    background: var(--yellow);
+    box-shadow: 0 0 15px rgba(var(--yellow-rgb), .48);
+  }
+
+  .scale-step.active.red { color: var(--red); }
+  .scale-step.active.red::before {
+    background: var(--red);
+    box-shadow: 0 0 15px rgba(var(--red-rgb), .48);
+  }
+
+  /* ---------- 一句话建议 ---------- */
+  .advice {
+    display: flex;
+    gap: 12px;
+    padding: 16px 18px;
+    border: 1px solid rgba(var(--blue-rgb), .18);
+    border-radius: 18px;
+    background: linear-gradient(135deg, rgba(var(--blue-rgb), .13), rgba(var(--green-rgb), .045));
+    animation: rise .42s ease both;
+  }
+
+  .advice-icon {
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    border-radius: 10px;
+    background: rgba(var(--blue-rgb), .14);
+    color: #c5dcff;
+    font-size: .9rem;
+    font-weight: 700;
+  }
+
+  .advice-label {
+    margin: 0 0 3px;
+    color: #a8c4ff;
+    font-size: .65rem;
+    letter-spacing: .08em;
+  }
+
+  .advice-text {
+    margin: 0;
+    color: #dce6f5;
+    font-size: .87rem;
+    line-height: 1.7;
+  }
+
+  /* ---------- 截止日期 ---------- */
+  .deadline-card { padding: 18px 20px; }
+
+  .deadline-card .deadline-input {
+    height: 54px;
+    font-size: 1.05rem;
+    font-weight: 650;
+    letter-spacing: -.01em;
+  }
+
+  .deadline-note {
+    margin: 9px 2px 0;
+    color: var(--faint);
+    font-size: .74rem;
+    line-height: 1.6;
+  }
+
+  .deadline-note.is-warning { color: var(--yellow); }
+
+  .deadline-warning {
+    margin: 5px 2px 0;
+    color: var(--yellow);
+    font-size: .72rem;
+    line-height: 1.5;
+  }
+
+  body.no-deadline .hero,
+  body.no-deadline .progress-card,
+  body.no-deadline .status-card,
+  body.no-deadline .advice {
+    opacity: .42;
+    filter: grayscale(.85);
+    pointer-events: none;
+  }
+
+  /* ---------- 记账 ---------- */
+  .log-card, .records-card { padding: 20px; }
+
+  .date-pill,
+  .count-pill {
+    padding: 5px 9px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .035);
+    color: var(--muted);
+    font-size: .68rem;
+    white-space: nowrap;
+  }
+
+  .count-pill:empty { display: none; }
+
+  .add-row {
+    display: flex;
+    gap: 10px;
+  }
+
+  .amount-field {
+    display: flex;
+    align-items: center;
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 54px;
+    padding: 0 14px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: rgba(0, 0, 0, .24);
+    transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
+  }
+
+  .amount-field:focus-within {
+    border-color: rgba(var(--green-rgb), .62);
+    background: rgba(0, 0, 0, .30);
+    box-shadow: 0 0 0 3px rgba(var(--green-rgb), .11);
+  }
+
+  .currency {
+    margin-right: 8px;
+    color: var(--muted);
+    font-size: 1.32rem;
+    font-weight: 700;
+  }
+
+  .amount-input {
+    width: 100%;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--text);
+    font-size: 1.5rem;
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.02em;
+  }
+
+  .amount-input::placeholder {
+    color: #4e5a6c;
+    font-weight: 500;
+  }
+
+  .primary {
+    min-height: 54px;
+    padding: 0 20px;
+    border: 0;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--green), #19b981);
+    color: #03150e;
+    font-size: .98rem;
+    font-weight: 800;
+    letter-spacing: -.01em;
+    cursor: pointer;
+    box-shadow: 0 12px 26px rgba(var(--green-rgb), .15);
+    transition: transform .15s ease, filter .2s ease, opacity .2s ease;
+  }
+
+  .primary:hover { filter: brightness(1.06); }
+  .primary:active { transform: translateY(1px); }
+
+  .form-error {
+    min-height: 18px;
+    margin: 6px 2px 0;
+    color: var(--red);
+    font-size: .75rem;
+    line-height: 1.4;
+  }
+
+  .log-hint {
+    margin: 2px 2px 0;
+    color: var(--faint);
+    font-size: .68rem;
+  }
+
+  /* ---------- 记录 ---------- */
+  .record-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .record {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 58px;
+    border-top: 1px solid var(--line);
+  }
+
+  .record:first-child { border-top: 0; }
+
+  .record-meta {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .record-date {
+    display: block;
+    overflow: hidden;
+    color: #d4deea;
+    font-size: .84rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .record-amount {
+    flex: 0 0 auto;
+    color: var(--green);
+    font-size: 1.08rem;
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .record-del {
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--faint);
+    font-size: 1.16rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: color .2s ease, background .2s ease, border-color .2s ease;
+  }
+
+  .record-del:hover {
+    border-color: rgba(var(--red-rgb), .22);
+    background: rgba(var(--red-rgb), .10);
+    color: var(--red);
+  }
+
+  .empty-state {
+    margin: 0;
+    padding: 22px 12px;
+    border: 1px dashed var(--line-strong);
+    border-radius: 14px;
+    color: var(--faint);
+    font-size: .81rem;
+    text-align: center;
+  }
+
+  .page-foot {
+    margin: 4px 0 0;
+    color: var(--faint);
+    font-size: .66rem;
+    line-height: 1.7;
+    text-align: center;
+  }
+
+  /* ---------- 调整弹窗 ---------- */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 16px;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+    background: rgba(2, 6, 10, .74);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+
+  .modal {
+    width: 100%;
+    max-width: 480px;
+    max-height: calc(100vh - 32px);
+    max-height: calc(100svh - 32px);
+    overflow-y: auto;
+    padding: 20px;
+    border: 1px solid var(--line-strong);
+    border-radius: 24px;
+    background: linear-gradient(180deg, #151f2c, #0d141e);
+    box-shadow: 0 30px 90px rgba(0, 0, 0, .62);
+    animation: sheet-up .24s cubic-bezier(.22, 1, .36, 1) both;
+  }
+
+  @keyframes sheet-up {
+    from { opacity: 0; transform: translateY(22px) scale(.985); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .modal-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+
+  .modal-head h2 {
+    margin: 0;
+    font-size: 1.22rem;
+    letter-spacing: -.025em;
+  }
+
+  .icon-close {
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    background: rgba(255, 255, 255, .035);
+    color: var(--muted);
+    font-size: 1.25rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .icon-close:hover {
+    background: rgba(255, 255, 255, .07);
+    color: #fff;
+  }
+
+  .field {
+    display: block;
+    margin-bottom: 14px;
+  }
+
+  .field-label {
+    display: block;
+    margin-bottom: 7px;
+    color: var(--muted);
+    font-size: .76rem;
+  }
+
+  .text-input {
+    width: 100%;
+    height: 52px;
+    padding: 0 14px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    outline: 0;
+    background: rgba(0, 0, 0, .25);
+    color: var(--text);
+    font-size: 1.08rem;
+    font-variant-numeric: tabular-nums;
+    transition: border-color .2s ease, box-shadow .2s ease;
+  }
+
+  .text-input:focus {
+    border-color: rgba(var(--green-rgb), .62);
+    box-shadow: 0 0 0 3px rgba(var(--green-rgb), .11);
+  }
+
+  input[type="date"] {
+    color-scheme: dark;
+    font-size: 1rem;
+    color: #e8eef6;
+  }
+
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    opacity: .65;
+    cursor: pointer;
+  }
+
+  .modal-hint {
+    margin: 0 0 4px;
+    color: var(--faint);
+    font-size: .7rem;
+    line-height: 1.6;
+  }
+
+  .modal-error {
+    min-height: 18px;
+    margin: 4px 0 8px;
+    color: var(--red);
+    font-size: .75rem;
+    line-height: 1.4;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 6px;
+  }
+
+  .ghost {
+    min-height: 52px;
+    flex: 1;
+    padding: 0 16px;
+    border: 1px solid var(--line-strong);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, .035);
+    color: #c8d2df;
+    font-size: .92rem;
+    font-weight: 650;
+    cursor: pointer;
+  }
+
+  .ghost:hover { background: rgba(255, 255, 255, .07); }
+
+  .modal-actions .primary { flex: 1.25; }
+
+  html.modal-open,
+  body.modal-open { overflow: hidden; }
+
+  /* ---------- Toast ---------- */
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: calc(18px + env(safe-area-inset-bottom));
+    z-index: 120;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    max-width: calc(100vw - 32px);
+    padding: 10px 12px 10px 16px;
+    border: 1px solid var(--line-strong);
+    border-radius: 16px;
+    background: #172231;
+    color: #eef4fb;
+    font-size: .82rem;
+    box-shadow: 0 16px 46px rgba(0, 0, 0, .46);
+    opacity: 0;
+    transform: translate(-50%, 16px);
+    pointer-events: none;
+    transition: opacity .2s ease, transform .2s ease;
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translate(-50%, 0);
+    pointer-events: auto;
+  }
+
+  .toast-text {
+    min-width: 0;
+    line-height: 1.45;
+  }
+
+  .toast-action {
+    min-height: 44px;
+    padding: 0 12px;
+    flex: 0 0 auto;
+    border: 0;
+    border-radius: 10px;
+    background: rgba(var(--green-rgb), .14);
+    color: var(--green);
+    font-size: .8rem;
+    font-weight: 750;
+    cursor: pointer;
+  }
+
+  .toast-action:hover { background: rgba(var(--green-rgb), .21); }
+
+  /* ---------- 窄屏 / 桌面 ---------- */
+  @media (max-width: 380px) {
+    .app { padding-right: 13px; padding-left: 13px; }
+    .hero, .deadline-card, .progress-card, .status-card, .log-card, .records-card { padding: 17px; }
+    .add-row { flex-direction: column; }
+    .add-row .primary { width: 100%; }
+    .daily {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .daily-label { padding-bottom: 0; }
+    .daily-value { text-align: left; }
+  }
+
+  @media (min-width: 600px) {
+    .modal-backdrop { align-items: center; }
+    .app { padding-top: 30px; }
+    .hero { padding: 28px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: .001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: .001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">¥</span>
+      <span>攒钱目标</span>
+    </div>
+    <button class="adjust-btn" id="adjustBtn" type="button" aria-label="调整已攒金额和计划开始日期">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3"></path>
+        <path d="M1 14h6M9 8h6M17 16h6"></path>
+      </svg>
+      调整
+    </button>
+  </header>
+
+  <p class="privacy">数据只存在本机浏览器，换设备或清缓存会丢</p>
+  <div class="config-error" id="configError" role="alert" hidden></div>
+
+  <main>
+    <section class="hero card" aria-labelledby="goalName">
+      <div class="hero-top">
+        <div>
+          <p class="eyebrow">目标</p>
+          <h1 class="goal-name" id="goalName">攒钱目标</h1>
+        </div>
+        <span class="target-chip" id="targetChip">2027.08.01</span>
+      </div>
+
+      <div class="countdown">
+        <div class="countdown-label" id="countdownLabel">距离目标还有</div>
+        <div class="countdown-value" id="countdownValue">
+          <span class="days-value" id="daysValue">0</span>
+          <span class="unit" id="daysUnit">天</span>
+        </div>
+        <p class="countdown-sub" id="countdownSub">含今天 · 按自然日计算</p>
+      </div>
+
+      <div class="daily">
+        <div class="daily-label" id="dailyLabel">每天要省</div>
+        <div class="daily-value" id="dailyValue">¥0</div>
+      </div>
+
+      <div class="metrics">
+        <div class="metric">
+          <span class="metric-label">还差</span>
+          <strong class="metric-value" id="remainValue">¥0</strong>
+        </div>
+        <div class="metric">
+          <span class="metric-label">每周要省</span>
+          <strong class="metric-value" id="weeklyValue">¥0</strong>
+        </div>
+        <div class="metric">
+          <span class="metric-label">每月要省</span>
+          <strong class="metric-value" id="monthlyValue">¥0</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="deadline-card card" aria-labelledby="deadlineTitle">
+      <div class="card-heading">
+        <h2 id="deadlineTitle">截止日期</h2>
+      </div>
+      <input
+        class="text-input deadline-input"
+        id="deadlineInput"
+        type="date"
+        aria-label="选择截止日期"
+        aria-describedby="deadlineNote deadlineWarning"
+      >
+      <p class="deadline-note" id="deadlineNote">原定 2027-08-01</p>
+      <p class="deadline-warning" id="deadlineWarning" role="alert" hidden>请选择日期，计算区已暂停</p>
+    </section>
+
+    <section class="progress-card card" aria-labelledby="progressTitle">
+      <div class="card-heading">
+        <h2 id="progressTitle">攒钱进度</h2>
+        <span class="percent" id="progressPercent">0%</span>
+      </div>
+
+      <div class="progress-track" id="progressTrack" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div class="progress-fill" id="progressFill"></div>
+        <span class="progress-amount" id="progressAmount">¥0 / ¥2,000</span>
+      </div>
+      <p class="progress-line" id="progressLine">还剩 0 天，还差 ¥0</p>
+
+      <div class="compare is-sync" id="compareBox">
+        <div class="compare-head">
+          <span class="compare-title">时间进度对比</span>
+          <span class="badge" id="compareBadge">同步</span>
+        </div>
+        <div class="dual-track" id="dualTrack" role="img" aria-label="时间进度和攒钱进度对比">
+          <div class="time-fill" id="timeFill"></div>
+          <div class="money-fill" id="moneyFill"></div>
+          <div class="time-marker" id="timeMarker"></div>
+        </div>
+        <div class="compare-legend">
+          <span><i class="dot time" aria-hidden="true"></i>时间已过 <b id="timePercent">0%</b></span>
+          <span><i class="dot money" aria-hidden="true"></i>钱已攒 <b id="moneyPercent">0%</b></span>
+        </div>
+        <p class="compare-note" id="compareNote">钱进度和时间进度基本同步</p>
+        <p class="plan-start" id="planStartNote"></p>
+      </div>
+    </section>
+
+    <section class="status-card card tone-green" id="statusCard" aria-live="polite">
+      <div class="status-head">
+        <span class="status-orb" aria-hidden="true"></span>
+        <div>
+          <p class="section-label">当前状态</p>
+          <h2 class="status-title" id="statusTitle">按计划在走</h2>
+        </div>
+      </div>
+      <p class="status-desc" id="statusDesc">攒钱进度没有落后于时间进度，保持这个节奏。</p>
+      <div class="status-scale" aria-hidden="true">
+        <span class="scale-step green">按计划</span>
+        <span class="scale-step yellow">稍微落后</span>
+        <span class="scale-step red">明显落后</span>
+      </div>
+    </section>
+
+    <section class="advice" aria-live="polite">
+      <div class="advice-icon" aria-hidden="true">✦</div>
+      <div>
+        <p class="advice-label">一句话建议</p>
+        <p class="advice-text" id="adviceText"></p>
+      </div>
+    </section>
+
+    <section class="log-card card" aria-labelledby="logTitle">
+      <div class="card-heading">
+        <h2 id="logTitle">每日记账</h2>
+        <span class="date-pill" id="todayLabel"></span>
+      </div>
+
+      <form id="addForm" novalidate>
+        <div class="add-row">
+          <label class="amount-field" for="amountInput">
+            <span class="currency" aria-hidden="true">¥</span>
+            <input
+              class="amount-input"
+              id="amountInput"
+              name="amount"
+              type="text"
+              inputmode="decimal"
+              enterkeyhint="done"
+              autocomplete="off"
+              placeholder="0.00"
+              aria-label="今天存了多少钱"
+            >
+          </label>
+          <button class="primary" type="submit">记一笔</button>
+        </div>
+        <p class="form-error" id="formError" role="alert"></p>
+      </form>
+      <p class="log-hint">点“记一笔”自动累加，数据留在本机</p>
+    </section>
+
+    <section class="records-card card" aria-labelledby="recordsTitle">
+      <div class="card-heading">
+        <h2 id="recordsTitle">最近记录</h2>
+        <span class="count-pill" id="recordCount"></span>
+      </div>
+      <ul class="record-list" id="recordList"></ul>
+      <p class="empty-state" id="emptyState">还没有记账，先存下第一笔吧。</p>
+    </section>
+
+    <p class="page-foot">剩余天数按自然日计算 · 目标日 <span id="footTarget">2027-08-01</span></p>
+  </main>
+</div>
+
+<div class="modal-backdrop" id="settingsModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="modal-head">
+      <div>
+        <p class="section-label">本机数据</p>
+        <h2 id="settingsTitle">调整目标</h2>
+      </div>
+      <button class="icon-close" id="closeSettings" type="button" aria-label="关闭调整窗口">×</button>
+    </div>
+
+    <form id="settingsForm" novalidate>
+      <label class="field" for="settingsSaved">
+        <span class="field-label">当前已攒（元）</span>
+        <input class="text-input" id="settingsSaved" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00">
+      </label>
+
+      <label class="field" for="settingsStart">
+        <span class="field-label">计划开始日期</span>
+        <input class="text-input" id="settingsStart" type="date">
+      </label>
+
+      <p class="modal-hint">时间进度从计划开始日算起；修改已攒金额不会删除下面的记账记录。</p>
+      <p class="modal-error" id="settingsError" role="alert"></p>
+
+      <div class="modal-actions">
+        <button class="ghost" id="cancelSettings" type="button">取消</button>
+        <button class="primary" type="submit">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+(() => {
+  'use strict';
+
+  const CONFIG = window.SAVINGS_CONFIG || {};
+  const DEFAULT_GOAL = {
+    name: '攒钱目标',
+    amount: 2000,
+    date: '2027-08-01',
+    initialSaved: 0
+  };
+  const GOAL = Object.assign({}, DEFAULT_GOAL, CONFIG.goal || {});
+  const PLAN_START_DATE = typeof CONFIG.planStartDate === 'string' ? CONFIG.planStartDate.trim() : '';
+  const THEME = Object.assign({
+    green: '#37e0a2',
+    yellow: '#ffc857',
+    red: '#ff637d',
+    blue: '#74a7ff'
+  }, CONFIG.theme || {});
+
+  const STORAGE_KEY = 'savings-goal-tracker-v1';
+  const DAY_MS = 86400000;
+  const AVG_MONTH_DAYS = 365.25 / 12;
+
+  const $ = (id) => document.getElementById(id);
+  const goalAmount = roundMoney(Number(GOAL.amount));
+  const targetTs = parseISODate(GOAL.date);
+
+  let state = null;
+  let storageWarned = false;
+  let lastDay = '';
+  let lastFocused = null;
+  let toastTimer = null;
+  let toastHideTimer = null;
+
+  const toastEl = $('toast');
+
+  /* ============================================================
+     日期 / 数字工具
+     ============================================================ */
+  function pad2(number) {
+    return String(number).padStart(2, '0');
+  }
+
+  function localDateStr(date = new Date()) {
+    return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+  }
+
+  function parseISODate(value) {
+    if (typeof value !== 'string') return null;
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    if (!match) return null;
+
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const timestamp = Date.UTC(year, month - 1, day);
+    const date = new Date(timestamp);
+
+    if (
+      date.getUTCFullYear() !== year ||
+      date.getUTCMonth() !== month - 1 ||
+      date.getUTCDate() !== day
+    ) return null;
+
+    return timestamp;
+  }
+
+  function getTodayUTC() {
+    const now = new Date();
+    return Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  }
+
+  function dateDiff(fromTs, toTs) {
+    return Math.round((toTs - fromTs) / DAY_MS);
+  }
+
+  function addDays(timestamp, days) {
+    return timestamp + days * DAY_MS;
+  }
+
+  function isoFromUTC(timestamp) {
+    const date = new Date(timestamp);
+    return `${date.getUTCFullYear()}-${pad2(date.getUTCMonth() + 1)}-${pad2(date.getUTCDate())}`;
+  }
+
+  function formatDateDots(timestamp) {
+    const date = new Date(timestamp);
+    return `${date.getUTCFullYear()}.${pad2(date.getUTCMonth() + 1)}.${pad2(date.getUTCDate())}`;
+  }
+
+  function formatDateYMD(timestamp) {
+    const date = new Date(timestamp);
+    return `${date.getUTCFullYear()}-${pad2(date.getUTCMonth() + 1)}-${pad2(date.getUTCDate())}`;
+  }
+
+  function roundMoney(value) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return NaN;
+    return Math.round((number + Number.EPSILON) * 100) / 100;
+  }
+
+  function money(value) {
+    if (value === null || value === undefined || value === '') return '—';
+    const number = roundMoney(value);
+    if (!Number.isFinite(number)) return '—';
+
+    const cents = Math.round(Math.abs(number) * 100) % 100;
+    const digits = cents === 0 ? 0 : 2;
+    return `¥${number.toLocaleString('zh-CN', {
+      minimumFractionDigits: digits,
+      maximumFractionDigits: 2
+    })}`;
+  }
+
+  function formatPercent(value) {
+    if (!Number.isFinite(value)) return '0%';
+    const rounded = Math.round(value * 10) / 10;
+    return Number.isInteger(rounded) ? `${rounded}%` : `${rounded.toFixed(1)}%`;
+  }
+
+  function formatPp(value) {
+    if (!Number.isFinite(value)) return '0';
+    if (value > 0 && value < 0.1) return value.toFixed(2);
+    const rounded = Math.round(value * 10) / 10;
+    return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  }
+
+  function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
+  }
+
+  function parseAmount(raw, allowZero = false) {
+    const cleaned = String(raw ?? '')
+      .replace(/[￥¥,\s，元]/g, '')
+      .trim();
+
+    if (!cleaned) return NaN;
+    if (!/^(?:\d+(?:\.\d{0,2})?|\.\d{1,2})$/.test(cleaned)) return NaN;
+
+    const amount = roundMoney(Number(cleaned));
+    if (!Number.isFinite(amount) || amount < 0) return NaN;
+    if (!allowZero && amount <= 0) return NaN;
+    return amount;
+  }
+
+  function formatInputNumber(value) {
+    const number = roundMoney(value);
+    if (!Number.isFinite(number)) return '0';
+    return Number.isInteger(number) ? String(number) : number.toFixed(2);
+  }
+
+  function makeId() {
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+      return window.crypto.randomUUID();
+    }
+    return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  }
+
+  function hexToRgb(hex) {
+    if (typeof hex !== 'string') return null;
+    let value = hex.trim().replace(/^#/, '');
+    if (value.length === 3) {
+      value = value.split('').map((char) => char + char).join('');
+    }
+    if (!/^[0-9a-f]{6}$/i.test(value)) return null;
+    return [
+      parseInt(value.slice(0, 2), 16),
+      parseInt(value.slice(2, 4), 16),
+      parseInt(value.slice(4, 6), 16)
+    ];
+  }
+
+  function applyTheme() {
+    const root = document.documentElement;
+    Object.keys(THEME).forEach((key) => {
+      const value = THEME[key];
+      const rgb = hexToRgb(value);
+      if (!rgb) return;
+      root.style.setProperty(`--${key}`, value);
+      root.style.setProperty(`--${key}-rgb`, rgb.join(','));
+    });
+  }
+
+  /* ============================================================
+     本地数据
+     ============================================================ */
+  function defaultPlanStart() {
+    const targetDate = isoFromUTC(targetTs);
+    let start = localDateStr();
+
+    if (PLAN_START_DATE && parseISODate(PLAN_START_DATE) !== null) {
+      start = PLAN_START_DATE;
+    }
+
+    // 开始日不能晚于目标日，否则时间进度会失去意义。
+    return start > targetDate ? targetDate : start;
+  }
+
+  function normalizePlanStart(value, fallback = defaultPlanStart()) {
+    if (typeof value !== 'string' || parseISODate(value) === null) return fallback;
+    const targetDate = isoFromUTC(targetTs);
+    return value > targetDate ? targetDate : value;
+  }
+
+  function normalizeTargetDate(value, fallback = GOAL.date) {
+    if (value === '') return '';
+    if (typeof value === 'string' && parseISODate(value) !== null) return value;
+    return fallback;
+  }
+
+  function defaultState() {
+    const initial = roundMoney(Number(GOAL.initialSaved));
+    return {
+      version: 1,
+      baseSaved: Number.isFinite(initial) ? Math.max(0, initial) : 0,
+      entries: [],
+      targetDate: GOAL.date,
+      planStartDate: defaultPlanStart(),
+      createdAt: new Date().toISOString()
+    };
+  }
+
+  function normalizeEntry(entry) {
+    if (!entry || typeof entry !== 'object') return null;
+
+    const amount = roundMoney(Number(entry.amount));
+    if (!Number.isFinite(amount) || amount <= 0) return null;
+
+    let at = typeof entry.at === 'string' ? entry.at : '';
+    const parsedAt = Date.parse(at);
+    at = Number.isNaN(parsedAt) ? new Date().toISOString() : new Date(parsedAt).toISOString();
+
+    return {
+      id: typeof entry.id === 'string' && entry.id ? entry.id : makeId(),
+      amount,
+      at
+    };
+  }
+
+  function loadState() {
+    let raw = null;
+    try {
+      raw = localStorage.getItem(STORAGE_KEY);
+    } catch (error) {
+      raw = null;
+    }
+
+    if (!raw) return defaultState();
+
+    try {
+      const data = JSON.parse(raw);
+      if (!data || typeof data !== 'object') return defaultState();
+
+      const baseSaved = roundMoney(Number(data.baseSaved));
+      const entries = Array.isArray(data.entries)
+        ? data.entries.map(normalizeEntry).filter(Boolean)
+        : [];
+      const targetDate = Object.prototype.hasOwnProperty.call(data, 'targetDate')
+        ? normalizeTargetDate(data.targetDate)
+        : GOAL.date;
+      const start = normalizePlanStart(data.planStartDate);
+
+      return {
+        version: 1,
+        baseSaved: Number.isFinite(baseSaved) ? baseSaved : 0,
+        entries,
+        targetDate,
+        planStartDate: start,
+        createdAt: typeof data.createdAt === 'string'
+          ? data.createdAt
+          : new Date().toISOString()
+      };
+    } catch (error) {
+      return defaultState();
+    }
+  }
+
+  function persist() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        version: 1,
+        baseSaved: roundMoney(state.baseSaved),
+        entries: state.entries,
+        targetDate: state.targetDate,
+        planStartDate: state.planStartDate,
+        createdAt: state.createdAt,
+        updatedAt: new Date().toISOString()
+      }));
+      return true;
+    } catch (error) {
+      if (!storageWarned) {
+        storageWarned = true;
+        showToast('浏览器不允许保存，刷新后数据会丢', { duration: 6000 });
+      }
+      return false;
+    }
+  }
+
+  function entriesSum() {
+    return roundMoney(state.entries.reduce((sum, entry) => sum + entry.amount, 0));
+  }
+
+  function savedTotal() {
+    return Math.max(0, roundMoney(state.baseSaved + entriesSum()));
+  }
+
+  /* ============================================================
+     核心计算
+     ============================================================ */
+  function getSnapshot() {
+    const today = getTodayUTC();
+    const saved = savedTotal();
+    const remainingAmount = Math.max(0, roundMoney(goalAmount - saved));
+    const achieved = saved >= goalAmount;
+    const moneyPct = (saved / goalAmount) * 100;
+    const selectedTarget = parseISODate(state.targetDate);
+
+    if (selectedTarget === null) {
+      return {
+        hasDeadline: false,
+        emptyDate: true,
+        targetTs: null,
+        isDueToday: false,
+        today,
+        saved,
+        remainingAmount,
+        achieved,
+        expired: false,
+        diffToTarget: null,
+        overdueDays: 0,
+        remainingDays: 0,
+        daily: null,
+        weekly: null,
+        monthly: null,
+        totalDays: 0,
+        elapsedDays: 0,
+        timePct: 0,
+        moneyPct,
+        gap: null,
+        pace: 0,
+        catchUpAmount: 0,
+        extraDaily: null,
+        planStartDate: state.planStartDate
+      };
+    }
+
+    const diffToTarget = dateDiff(today, selectedTarget);
+    const isDueToday = diffToTarget === 0;
+    const expired = diffToTarget < 0;
+    const overdueDays = expired ? -diffToTarget : 0;
+
+    // 未来按自然日计算并包含今天；截止日当天按新的边界规则算 0 天。
+    const remainingDays = diffToTarget > 0 ? diffToTarget + 1 : 0;
+
+    const daily = (!achieved && !expired && !isDueToday && remainingDays > 0)
+      ? remainingAmount / remainingDays
+      : (achieved ? 0 : null);
+    const weekly = daily === null ? null : daily * 7;
+    const monthly = daily === null ? null : daily * AVG_MONTH_DAYS;
+
+    const configuredStart = parseISODate(state.planStartDate);
+    const rawStart = configuredStart !== null ? configuredStart : today;
+    const start = Math.min(rawStart, selectedTarget);
+    const totalDays = Math.max(1, dateDiff(start, selectedTarget) + 1);
+
+    let elapsedDays = 0;
+    if (today > start) elapsedDays = dateDiff(start, today);
+    elapsedDays = clamp(elapsedDays, 0, totalDays);
+
+    let timePct = (elapsedDays / totalDays) * 100;
+    if (diffToTarget <= 0) timePct = 100;
+
+    const gap = timePct - moneyPct;
+    const paceDays = Math.max(1, dateDiff(start, today) + 1);
+    const pace = saved / paceDays;
+    const catchUpAmount = Math.max(0, roundMoney(goalAmount * (timePct / 100) - saved));
+    const extraDaily = (!achieved && !expired && !isDueToday && remainingDays > 0)
+      ? Math.ceil((catchUpAmount / remainingDays) * 100) / 100
+      : null;
+
+    return {
+      hasDeadline: true,
+      emptyDate: false,
+      targetTs: selectedTarget,
+      isDueToday,
+      today,
+      saved,
+      remainingAmount,
+      achieved,
+      expired,
+      diffToTarget,
+      overdueDays,
+      remainingDays,
+      daily,
+      weekly,
+      monthly,
+      totalDays,
+      elapsedDays,
+      timePct,
+      moneyPct,
+      gap,
+      pace,
+      catchUpAmount,
+      extraDaily,
+      planStartDate: isoFromUTC(start)
+    };
+  }
+
+  function statusFor(snapshot) {
+    if (snapshot.emptyDate) {
+      return {
+        tone: 'muted',
+        title: '请选择日期',
+        desc: '选好截止日期后，才能判断是否来得及。'
+      };
+    }
+
+    if (snapshot.achieved) {
+      const surplus = Math.max(0, roundMoney(snapshot.saved - goalAmount));
+      return {
+        tone: 'green',
+        title: '已达成',
+        desc: surplus > 0
+          ? `超出目标 ${money(surplus)}，目标完成。`
+          : '刚好攒够目标金额。'
+      };
+    }
+
+    if (snapshot.isDueToday) {
+      return {
+        tone: 'red',
+        title: '今天到期',
+        desc: `还差 ${money(snapshot.remainingAmount)}，今天到期，已经无法再按天分摊。`
+      };
+    }
+
+    if (snapshot.expired) {
+      return {
+        tone: 'red',
+        title: '已超期',
+        desc: `目标日已过 ${snapshot.overdueDays} 天，还差 ${money(snapshot.remainingAmount)}。要么降低目标，要么延长日期。`
+      };
+    }
+
+    const gap = snapshot.timePct - snapshot.moneyPct;
+
+    if (gap <= 0.005) {
+      return {
+        tone: 'green',
+        title: '按计划在走',
+        desc: gap < -0.005
+          ? '攒钱进度领先时间进度，节奏不错。'
+          : '攒钱进度和时间进度同步，保持这个节奏。'
+      };
+    }
+
+    if (gap <= 20) {
+      const extra = Math.max(0.01, snapshot.extraDaily);
+      return {
+        tone: 'yellow',
+        title: '稍微落后',
+        desc: `建议每天多省 ${money(extra)}，把每日目标提高到 ${money(snapshot.daily + extra)}。`
+      };
+    }
+
+    return {
+      tone: 'red',
+      title: '明显落后',
+      desc: `已落后 ${formatPp(gap)} 个百分点。要么降低目标，要么延长日期。`
+    };
+  }
+
+  function projectDate(remaining, pace) {
+    if (!(pace > 0) || !(remaining > 0)) return null;
+    const daysNeeded = Math.ceil(remaining / pace);
+    if (!Number.isFinite(daysNeeded) || daysNeeded <= 0 || daysNeeded > 365000) return null;
+    return addDays(getTodayUTC(), daysNeeded - 1);
+  }
+
+  function buildAdvice(snapshot) {
+    if (snapshot.emptyDate) {
+      return '请选择截止日期，才能倒推每天要省多少钱。';
+    }
+
+    if (snapshot.achieved) {
+      const surplus = Math.max(0, roundMoney(snapshot.saved - goalAmount));
+      const extraText = surplus > 0 ? `多攒了 ${money(surplus)}` : '刚好攒够目标';
+
+      if (snapshot.overdueDays > 0) {
+        return `目标已达成，${extraText}；虽然比目标日晚了 ${snapshot.overdueDays} 天，但总算到了。`;
+      }
+
+      const earlyDays = Math.max(0, dateDiff(getTodayUTC(), snapshot.targetTs));
+      if (earlyDays > 0) {
+        return `目标已达成，${extraText}，比目标日提前 ${earlyDays} 天完成。`;
+      }
+
+      return `目标已达成，${extraText}，正好卡在目标日。`;
+    }
+
+    if (snapshot.isDueToday) {
+      return `今天到期，还差 ${money(snapshot.remainingAmount)}；已经没有可分摊的剩余天数，先看今天还能补多少。`;
+    }
+
+    if (snapshot.expired) {
+      const projected = projectDate(snapshot.remainingAmount, snapshot.pace);
+      if (projected !== null) {
+        return `目标日已过 ${snapshot.overdueDays} 天，还差 ${money(snapshot.remainingAmount)}；按现在的节奏，预计 ${formatDateYMD(projected)} 达成。`;
+      }
+      return `目标日已过 ${snapshot.overdueDays} 天，还差 ${money(snapshot.remainingAmount)}；还没有攒钱记录，先记一笔看看节奏。`;
+    }
+
+    if (snapshot.pace > 0) {
+      const projected = projectDate(snapshot.remainingAmount, snapshot.pace);
+      if (projected === null) {
+        return '按现在的节奏需要非常久才能达成，先提高每天存入的金额吧。';
+      }
+
+      const delta = dateDiff(snapshot.targetTs, projected);
+      if (delta > 0) {
+        return `按现在的节奏，你会在 ${formatDateYMD(projected)} 达成，比目标晚 ${delta} 天。`;
+      }
+      if (delta < 0) {
+        return `保持每天 ${money(snapshot.pace)}，将在 ${formatDateYMD(projected)} 达成，比目标提前 ${-delta} 天。`;
+      }
+      return `按现在的节奏，将在 ${formatDateYMD(projected)} 达成，正好赶上目标。`;
+    }
+
+    const plannedDaily = snapshot.remainingDays > 0
+      ? snapshot.remainingAmount / snapshot.remainingDays
+      : 0;
+    return `还没有攒钱记录；按每天 ${money(plannedDaily)} 的计划，将在 ${formatDateYMD(snapshot.targetTs)} 达成，先记下第一笔吧。`;
+  }
+
+  /* ============================================================
+     渲染
+     ============================================================ */
+  function renderTargetMeta(snapshot) {
+    if (!snapshot.hasDeadline) {
+      $('targetChip').textContent = '未设日期';
+      $('targetChip').title = '请选择截止日期';
+      $('footTarget').textContent = '未选择';
+      return;
+    }
+
+    $('targetChip').textContent = formatDateDots(snapshot.targetTs);
+    $('targetChip').title = `截止日期 ${formatDateYMD(snapshot.targetTs)}`;
+    $('footTarget').textContent = formatDateYMD(snapshot.targetTs);
+  }
+
+  function renderDeadlineNote(snapshot) {
+    const note = $('deadlineNote');
+    const warning = $('deadlineWarning');
+    const originalText = `原定 ${formatDateYMD(targetTs)}`;
+    note.classList.toggle('is-warning', snapshot.emptyDate);
+
+    if (snapshot.emptyDate) {
+      note.textContent = `${originalText} · 请选择日期`;
+      warning.hidden = false;
+      warning.textContent = '请选择日期，计算区已暂停';
+      return;
+    }
+
+    warning.hidden = true;
+
+    const shift = dateDiff(targetTs, snapshot.targetTs);
+    let text = originalText;
+
+    if (shift > 0) text += `，延后 ${shift} 天`;
+    else if (shift < 0) text += `，提前 ${-shift} 天`;
+    else text += '，日期未变';
+
+    const originalDiff = dateDiff(getTodayUTC(), targetTs);
+    const originalRemainingDays = originalDiff > 0 ? originalDiff + 1 : 0;
+
+    if (snapshot.achieved) {
+      text += ' → 已达成目标';
+    } else if (snapshot.daily !== null && originalRemainingDays > 0) {
+      const originalDaily = snapshot.remainingAmount / originalRemainingDays;
+      const delta = originalDaily - snapshot.daily;
+      if (Math.abs(delta) < 0.005) text += ' → 每天目标不变';
+      else if (delta > 0) text += ` → 每天少省 ${money(delta)}`;
+      else text += ` → 每天多省 ${money(-delta)}`;
+    } else if (snapshot.isDueToday) {
+      text += ' → 今天到期，无法再按天分摊';
+    } else if (snapshot.expired) {
+      text += ' → 截止日已过';
+    } else if (originalRemainingDays <= 0) {
+      text += dateDiff(getTodayUTC(), targetTs) < 0
+        ? ' → 原定日已过，无法对比日均'
+        : ' → 原定日就是今天';
+    }
+
+    note.textContent = text;
+  }
+
+  function renderHero(snapshot) {
+    const wordMode = snapshot.emptyDate || snapshot.achieved || snapshot.expired;
+    const daysValue = $('daysValue');
+
+    $('countdownLabel').textContent = snapshot.emptyDate
+      ? '截止日期'
+      : snapshot.achieved
+        ? '当前状态'
+        : snapshot.expired
+          ? '目标日期已过'
+          : '距离目标还有';
+
+    daysValue.textContent = snapshot.emptyDate
+      ? '请选择日期'
+      : snapshot.achieved
+        ? '已达成'
+        : snapshot.expired
+          ? '已超期'
+          : String(snapshot.remainingDays);
+
+    daysValue.classList.toggle('is-achieved', snapshot.achieved);
+    daysValue.classList.toggle('is-overdue', snapshot.expired);
+    $('countdownValue').classList.toggle('is-word', wordMode);
+    $('daysUnit').hidden = wordMode;
+
+    if (snapshot.emptyDate) {
+      $('countdownSub').textContent = '选好日期后自动计算';
+    } else if (snapshot.achieved) {
+      const surplus = Math.max(0, roundMoney(snapshot.saved - goalAmount));
+      $('countdownSub').textContent = surplus > 0
+        ? `超出目标 ${money(surplus)}`
+        : '刚好攒够目标金额';
+    } else if (snapshot.expired) {
+      $('countdownSub').textContent = `目标日已过 ${snapshot.overdueDays} 天`;
+    } else if (snapshot.isDueToday) {
+      $('countdownSub').textContent = '今天到期 · 截止日当天按 0 天算';
+    } else {
+      $('countdownSub').textContent = '含今天 · 按自然日计算';
+    }
+
+    $('dailyValue').textContent = snapshot.achieved
+      ? '¥0'
+      : money(snapshot.daily);
+    $('dailyValue').classList.toggle(
+      'is-muted',
+      snapshot.emptyDate || snapshot.expired || snapshot.isDueToday
+    );
+
+    $('remainValue').textContent = money(snapshot.remainingAmount);
+    $('weeklyValue').textContent = snapshot.achieved
+      ? '¥0'
+      : snapshot.emptyDate || snapshot.expired || snapshot.isDueToday
+        ? '—'
+        : money(snapshot.weekly);
+    $('monthlyValue').textContent = snapshot.achieved
+      ? '¥0'
+      : snapshot.emptyDate || snapshot.expired || snapshot.isDueToday
+        ? '—'
+        : money(snapshot.monthly);
+  }
+
+  function renderProgress(snapshot) {
+    const fillPct = clamp(snapshot.moneyPct, 0, 100);
+    $('progressFill').style.width = `${fillPct}%`;
+    $('progressPercent').textContent = formatPercent(snapshot.moneyPct);
+    $('progressAmount').textContent = `${money(snapshot.saved)} / ${money(goalAmount)}`;
+
+    const track = $('progressTrack');
+    track.setAttribute('aria-valuenow', String(Math.round(fillPct)));
+    track.setAttribute('aria-valuetext', `攒钱进度 ${formatPercent(snapshot.moneyPct)}，已攒 ${money(snapshot.saved)}，目标 ${money(goalAmount)}`);
+
+    if (snapshot.emptyDate) {
+      $('progressLine').textContent = '请选择截止日期';
+      $('timeFill').style.width = '0%';
+      $('moneyFill').style.width = '0%';
+      $('timeMarker').style.opacity = '0';
+      $('timePercent').textContent = '—';
+      $('moneyPercent').textContent = '—';
+
+      const pendingBox = $('compareBox');
+      pendingBox.classList.remove('is-behind', 'is-ahead', 'is-sync');
+      pendingBox.classList.add('is-sync');
+      $('compareBadge').textContent = '待计算';
+      $('compareNote').textContent = '选择截止日期后显示时间对比';
+      $('planStartNote').textContent = `计划开始 ${snapshot.planStartDate}`;
+      $('dualTrack').setAttribute('aria-label', '请选择截止日期，时间进度待计算');
+      return;
+    }
+
+    if (snapshot.achieved) {
+      const surplus = Math.max(0, roundMoney(snapshot.saved - goalAmount));
+      $('progressLine').textContent = surplus > 0
+        ? `已达成，超出 ${money(surplus)}`
+        : '已达成，正好完成目标';
+    } else if (snapshot.isDueToday) {
+      $('progressLine').textContent = `今天到期，还差 ${money(snapshot.remainingAmount)}`;
+    } else if (snapshot.expired) {
+      $('progressLine').textContent = `已超期 ${snapshot.overdueDays} 天，还差 ${money(snapshot.remainingAmount)}`;
+    } else {
+      $('progressLine').textContent = `还剩 ${snapshot.remainingDays} 天，还差 ${money(snapshot.remainingAmount)}`;
+    }
+
+    const timeBar = clamp(snapshot.timePct, 0, 100);
+    const moneyBar = clamp(snapshot.moneyPct, 0, 100);
+    $('timeFill').style.width = `${timeBar}%`;
+    $('moneyFill').style.width = `${moneyBar}%`;
+    $('timeMarker').style.left = `${timeBar}%`;
+    $('timeMarker').style.opacity = timeBar > 0.01 ? '1' : '0';
+    $('timePercent').textContent = formatPercent(snapshot.timePct);
+    $('moneyPercent').textContent = formatPercent(snapshot.moneyPct);
+
+    const gap = snapshot.timePct - snapshot.moneyPct;
+    const box = $('compareBox');
+    box.classList.remove('is-behind', 'is-ahead', 'is-sync');
+
+    let badge = '同步';
+    let note = '钱进度和时间进度基本同步';
+
+    if (gap > 0.005) {
+      box.classList.add('is-behind');
+      badge = '落后';
+      note = `钱进度比时间进度慢 ${formatPp(gap)} 个百分点，需要追一追`;
+    } else if (gap < -0.005) {
+      box.classList.add('is-ahead');
+      badge = '领先';
+      note = `钱进度比时间进度快 ${formatPp(-gap)} 个百分点，节奏不错`;
+    } else {
+      box.classList.add('is-sync');
+    }
+
+    $('compareBadge').textContent = badge;
+    $('compareNote').textContent = note;
+    $('planStartNote').textContent = `计划开始 ${snapshot.planStartDate} · 时间进度按此计算`;
+    $('dualTrack').setAttribute(
+      'aria-label',
+      `时间已过 ${formatPercent(snapshot.timePct)}，已攒 ${formatPercent(snapshot.moneyPct)}，${badge}`
+    );
+  }
+
+  function renderStatus(snapshot) {
+    const status = statusFor(snapshot);
+    const card = $('statusCard');
+
+    card.classList.remove('tone-green', 'tone-yellow', 'tone-red', 'tone-muted');
+    card.classList.add(`tone-${status.tone}`);
+    $('statusTitle').textContent = status.title;
+    $('statusDesc').textContent = status.desc;
+
+    card.querySelectorAll('.scale-step').forEach((step) => {
+      step.classList.toggle(
+        'active',
+        status.tone !== 'muted' && step.classList.contains(status.tone)
+      );
+    });
+  }
+
+  function renderAdvice(snapshot) {
+    $('adviceText').textContent = buildAdvice(snapshot);
+  }
+
+  function formatRecordWhen(iso) {
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return '未知时间';
+
+    const now = new Date();
+    const todayStamp = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+    const entryStamp = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+    const dayDiff = Math.round((todayStamp - entryStamp) / DAY_MS);
+
+    let dateText;
+    if (dayDiff === 0) {
+      dateText = '今天';
+    } else if (dayDiff === 1) {
+      dateText = '昨天';
+    } else if (date.getFullYear() === now.getFullYear()) {
+      dateText = `${date.getMonth() + 1}月${date.getDate()}日`;
+    } else {
+      dateText = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+    }
+
+    return `${dateText} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+  }
+
+  function renderRecords() {
+    const list = $('recordList');
+    const empty = $('emptyState');
+    const count = $('recordCount');
+    const sorted = [...state.entries].sort((a, b) => {
+      return Date.parse(b.at) - Date.parse(a.at);
+    });
+    const recent = sorted.slice(0, 10);
+
+    list.replaceChildren();
+    empty.hidden = recent.length > 0;
+    list.hidden = recent.length === 0;
+
+    if (state.entries.length === 0) {
+      count.textContent = '';
+      return;
+    }
+
+    count.textContent = state.entries.length > 10
+      ? `最近 10 / 共 ${state.entries.length} 笔`
+      : `共 ${state.entries.length} 笔`;
+
+    recent.forEach((entry) => {
+      const item = document.createElement('li');
+      item.className = 'record';
+
+      const meta = document.createElement('div');
+      meta.className = 'record-meta';
+
+      const date = document.createElement('span');
+      date.className = 'record-date';
+      date.textContent = formatRecordWhen(entry.at);
+
+      const amount = document.createElement('span');
+      amount.className = 'record-amount';
+      amount.textContent = `+${money(entry.amount)}`;
+
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'record-del';
+      remove.dataset.entryId = entry.id;
+      remove.setAttribute('aria-label', `删除 ${formatRecordWhen(entry.at)} 的 ${money(entry.amount)} 记录`);
+      remove.title = '删除这条记录';
+      remove.textContent = '×';
+
+      meta.appendChild(date);
+      item.appendChild(meta);
+      item.appendChild(amount);
+      item.appendChild(remove);
+      list.appendChild(item);
+    });
+  }
+
+  function updateTodayLabel() {
+    const now = new Date();
+    const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+    $('todayLabel').textContent = `${now.getMonth() + 1}月${now.getDate()}日 · 周${weekdays[now.getDay()]}`;
+  }
+
+  function render() {
+    const snapshot = getSnapshot();
+    document.body.classList.toggle('no-deadline', snapshot.emptyDate);
+    updateTodayLabel();
+    renderTargetMeta(snapshot);
+    renderDeadlineNote(snapshot);
+    renderHero(snapshot);
+    renderProgress(snapshot);
+    renderStatus(snapshot);
+    renderAdvice(snapshot);
+    renderRecords();
+  }
+
+  /* ============================================================
+     交互
+     ============================================================ */
+  function setFormError(message = '') {
+    $('formError').textContent = message;
+  }
+
+  function setSettingsError(message = '') {
+    $('settingsError').textContent = message;
+  }
+
+  function handleDeadlineChange() {
+    const input = $('deadlineInput');
+    const value = input.value;
+    const targetDate = value === ''
+      ? ''
+      : parseISODate(value) !== null
+        ? value
+        : '';
+
+    if (targetDate === state.targetDate) {
+      if (input.value !== targetDate) input.value = targetDate;
+      return;
+    }
+
+    state.targetDate = targetDate;
+    persist();
+    render();
+  }
+
+  function addEntry(event) {
+    event.preventDefault();
+
+    const amount = parseAmount($('amountInput').value);
+    if (!Number.isFinite(amount)) {
+      setFormError('请输入大于 0 的金额（最多两位小数）');
+      $('amountInput').focus();
+      return;
+    }
+
+    state.entries.push({
+      id: makeId(),
+      amount,
+      at: new Date().toISOString()
+    });
+
+    persist();
+    $('amountInput').value = '';
+    setFormError('');
+    $('amountInput').blur();
+    render();
+    showToast(`已记下 +${money(amount)}`, { duration: 2600 });
+  }
+
+  function deleteEntry(entryId) {
+    const entry = state.entries.find((item) => item.id === entryId);
+    if (!entry) return;
+
+    state.entries = state.entries.filter((item) => item.id !== entryId);
+    persist();
+    render();
+
+    showToast(`已删除 ${money(entry.amount)}`, {
+      duration: 5000,
+      actionLabel: '撤销',
+      onAction: () => {
+        if (state.entries.some((item) => item.id === entry.id)) return;
+        state.entries.push(entry);
+        persist();
+        render();
+        showToast('已恢复这笔记录', { duration: 2200 });
+      }
+    });
+  }
+
+  function updateSettingsLimits() {
+    const today = getTodayUTC();
+    const selectedTarget = parseISODate(state.targetDate);
+    const maxStart = selectedTarget !== null && selectedTarget < today
+      ? selectedTarget
+      : today;
+    $('settingsStart').max = isoFromUTC(maxStart);
+  }
+
+  function openSettings() {
+    lastFocused = document.activeElement;
+    updateSettingsLimits();
+    $('settingsSaved').value = formatInputNumber(savedTotal());
+    $('settingsStart').value = state.planStartDate;
+    setSettingsError('');
+    $('settingsModal').hidden = false;
+    document.documentElement.classList.add('modal-open');
+    document.body.classList.add('modal-open');
+    window.setTimeout(() => {
+      $('settingsSaved').focus();
+      $('settingsSaved').select();
+    }, 30);
+  }
+
+  function closeSettings() {
+    $('settingsModal').hidden = true;
+    document.documentElement.classList.remove('modal-open');
+    document.body.classList.remove('modal-open');
+    if (lastFocused && typeof lastFocused.focus === 'function') {
+      lastFocused.focus();
+    }
+  }
+
+  function saveSettings(event) {
+    event.preventDefault();
+
+    const newSaved = parseAmount($('settingsSaved').value, true);
+    if (!Number.isFinite(newSaved)) {
+      setSettingsError('请输入不小于 0 的已攒金额（最多两位小数）');
+      $('settingsSaved').focus();
+      return;
+    }
+
+    const startValue = $('settingsStart').value;
+    const startTs = parseISODate(startValue);
+    if (startTs === null) {
+      setSettingsError('请选择有效的计划开始日期');
+      return;
+    }
+    const selectedTarget = parseISODate(state.targetDate);
+    if (selectedTarget !== null && startTs > selectedTarget) {
+      setSettingsError('计划开始日期不能晚于目标日期');
+      return;
+    }
+    if (startTs > getTodayUTC()) {
+      setSettingsError('计划开始日期不能晚于今天');
+      return;
+    }
+
+    state.baseSaved = roundMoney(newSaved - entriesSum());
+    state.planStartDate = startValue;
+    persist();
+    render();
+    closeSettings();
+    showToast('已保存调整', { duration: 2200 });
+  }
+
+  function handleRecordListClick(event) {
+    const button = event.target.closest('button[data-entry-id]');
+    if (!button) return;
+    deleteEntry(button.dataset.entryId);
+  }
+
+  function handleModalKeydown(event) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeSettings();
+      return;
+    }
+
+    if (event.key !== 'Tab') return;
+
+    const focusable = [...$('settingsModal').querySelectorAll('button, input, [href], select, textarea')]
+      .filter((element) => !element.disabled && element.offsetParent !== null);
+
+    if (focusable.length === 0) return;
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
+  function showToast(message, options = {}) {
+    window.clearTimeout(toastTimer);
+    window.clearTimeout(toastHideTimer);
+
+    toastEl.replaceChildren();
+
+    const text = document.createElement('span');
+    text.className = 'toast-text';
+    text.textContent = message;
+    toastEl.appendChild(text);
+
+    if (options.actionLabel) {
+      const action = document.createElement('button');
+      action.type = 'button';
+      action.className = 'toast-action';
+      action.textContent = options.actionLabel;
+      action.addEventListener('click', () => {
+        const callback = options.onAction;
+        hideToast();
+        if (typeof callback === 'function') callback();
+      }, { once: true });
+      toastEl.appendChild(action);
+    }
+
+    toastEl.hidden = false;
+    window.requestAnimationFrame(() => toastEl.classList.add('show'));
+
+    toastTimer = window.setTimeout(hideToast, options.duration || 4000);
+  }
+
+  function hideToast() {
+    window.clearTimeout(toastTimer);
+    toastEl.classList.remove('show');
+    window.clearTimeout(toastHideTimer);
+    toastHideTimer = window.setTimeout(() => {
+      toastEl.hidden = true;
+      toastEl.replaceChildren();
+    }, 220);
+  }
+
+  function checkDayChange() {
+    const day = localDateStr();
+    if (day !== lastDay) {
+      lastDay = day;
+      render();
+    }
+  }
+
+  function bindEvents() {
+    $('addForm').addEventListener('submit', addEntry);
+    $('amountInput').addEventListener('input', () => setFormError(''));
+    $('deadlineInput').addEventListener('change', handleDeadlineChange);
+    $('deadlineInput').addEventListener('input', handleDeadlineChange);
+    $('adjustBtn').addEventListener('click', openSettings);
+    $('settingsForm').addEventListener('submit', saveSettings);
+    $('closeSettings').addEventListener('click', closeSettings);
+    $('cancelSettings').addEventListener('click', closeSettings);
+    $('settingsModal').addEventListener('click', (event) => {
+      if (event.target === $('settingsModal')) closeSettings();
+    });
+    $('settingsModal').addEventListener('keydown', handleModalKeydown);
+    $('settingsSaved').addEventListener('input', () => setSettingsError(''));
+    $('settingsStart').addEventListener('input', () => setSettingsError(''));
+    $('recordList').addEventListener('click', handleRecordListClick);
+
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) checkDayChange();
+    });
+    window.addEventListener('focus', checkDayChange);
+  }
+
+  function setStaticLabels() {
+    document.title = `${GOAL.name} · 攒钱目标追踪器`;
+    $('goalName').textContent = GOAL.name;
+
+    const selectedTarget = parseISODate(state.targetDate);
+    if (selectedTarget !== null) {
+      $('targetChip').textContent = formatDateDots(selectedTarget);
+      $('targetChip').title = `截止日期 ${formatDateYMD(selectedTarget)}`;
+      $('footTarget').textContent = formatDateYMD(selectedTarget);
+    } else {
+      $('targetChip').textContent = '未设日期';
+      $('targetChip').title = '请选择截止日期';
+      $('footTarget').textContent = '未选择';
+    }
+
+    $('deadlineInput').value = state.targetDate;
+    updateSettingsLimits();
+  }
+
+  function init() {
+    applyTheme();
+    state = loadState();
+    setStaticLabels();
+    bindEvents();
+    render();
+    persist();
+    lastDay = localDateStr();
+    window.setInterval(checkDayChange, 60000);
+  }
+
+  if (!Number.isFinite(goalAmount) || goalAmount <= 0 || targetTs === null) {
+    const errorBox = $('configError');
+    errorBox.hidden = false;
+    errorBox.textContent = '配置有误：请检查文件开头的目标金额（必须大于 0）和目标日期（格式 YYYY-MM-DD）。';
+    return;
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
